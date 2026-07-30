@@ -1,0 +1,53 @@
+@import "leaflet/dist/leaflet.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 antialiased font-sans m-0 overflow-x-hidden transition-colors duration-300;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border border-white/20 dark:border-gray-700 shadow-xl rounded-2xl;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium shadow-sm;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-shadow text-gray-900 dark:text-white;
+  }
+}
+
+/* Global Dark Mode Overrides */
+.dark .bg-white { @apply bg-gray-800 border-gray-700 !important; }
+.dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { @apply text-gray-100 !important; }
+.dark .text-gray-600, .dark .text-gray-500 { @apply text-gray-400 !important; }
+.dark .bg-gray-50, .dark .bg-gray-100 { @apply bg-gray-900 !important; }
+.dark .border-gray-200, .dark .border-gray-100 { @apply border-gray-700 !important; }
+.dark .bg-white\/5 { @apply bg-gray-800/50 !important; }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-report, #printable-report * {
+    visibility: visible;
+  }
+  #printable-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+  }
+}

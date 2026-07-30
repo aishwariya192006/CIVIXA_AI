@@ -1,0 +1,456 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // "CITIZEN", "OFFICER", "OFFICIAL", "ADMIN"
+  permissions String   @default("[]") // JSON array of permissions
+  users       User[]
+}
+
+model User {
+  id            String  @id @default(uuid())
+  fullName      String
+  email         String  @unique
+  password      String
+  contactNumber String?
+  address       String?
+  district      String?
+  pincode       String?
+  
+  roleId        String?
+  role          Role?   @relation(fields: [roleId], references: [id])
+  roleName      String  @default("CITIZEN") // Fallback for existing code
+  
+  departmentId  String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  filedComplaints   Complaint[] @relation("CitizenComplaints")
+  assignedComplaints Complaint[] @relation("OfficerComplaints")
+  joinedComplaints  Complaint[] @relation("JoinedComplaints")
+  
+  messagesSent      Message[]   @relation("SenderMessages")
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  assignments       Assignment[]
+  reports           Report[]
+  timelineEvents    TimelineEvent[]
+  notificationPref  NotificationPreference?
+}
+
+model Department {
+  id          String  @id @default(uuid())
+  name        String  @unique 
+  description String?
+  
+  users       User[]
+  complaints  Complaint[]
+}
+
+model Complaint {
+  id              String  @id @default(uuid())
+  title           String
+  description     String
+  
+  locationLat     Float?
+  locationLng     Float?
+  address         String?
+  district        String?
+  zone            String?
+  ward            String?
+  
+  categoryId      String? 
+  categoryName    String? 
+  priority        String @default("LOW") // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  status          String @default("NOT_STARTED") // "NOT_STARTED", "ASSIGNED", "IN_PROGRESS", "VERIFICATION", "RESOLVED", "REJECTED", "ESCALATED", "COMPLETED"
+  
+  // Legacy fields (kept for backward compatibility during migration)
+  images          String @default("[]")
+  voiceFiles      String @default("[]")
+  documents       String @default("[]")
+  aiKeywords      String @default("[]")
+  aiTags          String @default("[]")
+  
+  severity        Int      @default(1) 
+  urgency         Int      @default(1) 
+  peopleAffected  Int      @default(1)
+  aiSummary       String?
+  priorityScore   Float?
+  deadline        DateTime?
+  
+  beforeImage     String?
+  afterImage      String?
+  workingImages   String @default("[]")
+  resolutionRemarks String?
+  citizenRating   Int?
+  citizenFeedback String?
+  
+  verificationStatus String? 
+  confidenceScore    Float?
+  verificationExplanation String?
+  
+  citizenId       String
+  citizen         User    @relation("CitizenComplaints", fields: [citizenId], references: [id])
+  
+  joinedCitizens  User[]  @relation("JoinedComplaints")
+
+  departmentId    String?
+  department      Department? @relation(fields: [departmentId], references: [id])
+  
+  assignedOfficerId String?
+  assignedOfficer   User?   @relation("OfficerComplaints", fields: [assignedOfficerId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  messages             Message[]
+  auditLogs            AuditLog[]
+  complaintImages      ComplaintImage[]
+  voiceNotes           VoiceNote[]
+  complaintDocuments   Document[]
+  statusHistory        ComplaintStatusHistory[]
+  assignments          Assignment[]
+  aiResults            AIResult[]
+  escalations          Escalation[]
+  timelineEvents       TimelineEvent[]
+}
+
+model ComplaintImage {
+  id          String   @id @default(uuid())
+  url         String
+  type        String   @default("BEFORE") // "BEFORE", "PROGRESS", "AFTER"
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model VoiceNote {
+  id          String   @id @default(uuid())
+  url         String
+  transcript  String?
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  url         String
+  name        String
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model ComplaintStatusHistory {
+  id          String   @id @default(uuid())
+  status      String
+  remarks     String?
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Assignment {
+  id          String   @id @default(uuid())
+  officerId   String
+  officer     User     @relation(fields: [officerId], references: [id])
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  assignedAt  DateTime @default(now())
+  active      Boolean  @default(true)
+}
+
+model AIResult {
+  id          String   @id @default(uuid())
+  agentName   String   // "UNDERSTANDING", "ROUTING", "PRIORITY", "DUPLICATE", "VERIFICATION"
+  resultData  String   // JSON payload
+  confidence  Float?
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Escalation {
+  id          String   @id @default(uuid())
+  reason      String
+  level       Int      @default(1)
+  resolved    Boolean  @default(false)
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  name        String
+  url         String
+  type        String   // "MONTHLY", "OFFICER_PERFORMANCE", "DEPARTMENT_STATS"
+  generatedBy String
+  user        User     @relation(fields: [generatedBy], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  content     String?
+  mediaUrl    String?
+  mediaType   String? // "IMAGE", "PDF", "VOICE"
+  
+  senderId    String
+  sender      User     @relation("SenderMessages", fields: [senderId], references: [id])
+  
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  title       String
+  message     String
+  type        String   // "STATUS_UPDATE", "ESCALATION", "REMINDER"
+  metadata    String?  // JSON string
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  complaintId String?
+  complaint   Complaint? @relation(fields: [complaintId], references: [id])
+  
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id])
+  
+  action      String     
+  details     String?    
+  timestamp   DateTime   @default(now())
+}
+
+model TimelineEvent {
+  id          String   @id @default(uuid())
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id])
+  
+  title       String
+  description String?
+  aiResult    String?  // Store AI insights related to this event
+  remarks     String?
+  
+  createdAt   DateTime @default(now())
+}
+
+// ==========================================
+// AIOps Models
+// ==========================================
+
+model AIHealth {
+  id          String   @id @default(uuid())
+  agentName   String   @unique
+  status      String   @default("HEALTHY") // "HEALTHY", "WARNING", "CRITICAL", "OFFLINE"
+  currentModel String?
+  version     String?
+  responseTime Float?
+  confidence   Float?
+  successRate  Float?
+  failureRate  Float?
+  queueLength  Int     @default(0)
+  currentWorker String?
+  memoryUsage  Float?
+  cpuUsage     Float?
+  lastExecutionTime DateTime?
+  updatedAt    DateTime @updatedAt
+}
+
+model AIIncident {
+  id          String   @id @default(uuid())
+  incidentId  String   @unique @default(uuid())
+  agent       String
+  severity    String   // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  rootCause   String?
+  resolved    Boolean  @default(false)
+  downtime    Int?
+  recoveryTime Int?
+  resolutionNotes String?
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+}
+
+model AIAlert {
+  id          String   @id @default(uuid())
+  message     String
+  level       String   // "INFORMATION", "WARNING", "CRITICAL", "EMERGENCY"
+  source      String
+  acknowledged Boolean @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model AIWorker {
+  id          String   @id @default(uuid())
+  workerName  String   @unique
+  status      String   // "RUNNING", "STOPPED", "PAUSED", "FAILED"
+  lastPing    DateTime @default(now())
+  metadata    String?  // JSON string for extra info
+}
+
+model AIQueue {
+  id              String   @id @default(uuid())
+  queueName       String   @unique
+  waitingJobs     Int      @default(0)
+  activeJobs      Int      @default(0)
+  completedJobs   Int      @default(0)
+  failedJobs      Int      @default(0)
+  delayedJobs     Int      @default(0)
+  retryCount      Int      @default(0)
+  avgProcessingTime Float?
+  status          String   @default("ACTIVE") // "ACTIVE", "PAUSED"
+  updatedAt       DateTime @updatedAt
+}
+
+model AIModel {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  provider    String   // "OpenAI", "Gemini", "Claude", "Azure OpenAI", "Ollama", "OpenRouter"
+  version     String?
+  availability String  @default("AVAILABLE") // "AVAILABLE", "DEGRADED", "UNAVAILABLE"
+  latency     Float?
+  confidence  Float?
+  totalTokens Int      @default(0)
+  totalCost   Float    @default(0)
+  totalRequests Int    @default(0)
+  totalFailures Int    @default(0)
+  active      Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+}
+
+model AIRequest {
+  id          String   @id @default(uuid())
+  agent       String
+  model       String
+  prompt      String
+  context     String?
+  input       String
+  output      String?
+  confidence  Float?
+  latency     Float?
+  success     Boolean  @default(true)
+  errorMessage String?
+  createdAt   DateTime @default(now())
+}
+
+model AITokenUsage {
+  id          String   @id @default(uuid())
+  agent       String
+  model       String
+  tokens      Int
+  type        String   // "PROMPT", "COMPLETION", "TOTAL"
+  createdAt   DateTime @default(now())
+}
+
+model AICost {
+  id          String   @id @default(uuid())
+  agent       String
+  model       String
+  cost        Float
+  createdAt   DateTime @default(now())
+}
+
+model AIServiceHealth {
+  id          String   @id @default(uuid())
+  serviceName String   @unique // "PostgreSQL", "Redis", "BullMQ", "Socket.IO", "Cloudinary", "Backend", "Frontend", "API Gateway"
+  status      String   @default("HEALTHY") // "HEALTHY", "WARNING", "OFFLINE", "MAINTENANCE"
+  latency     Float?
+  lastCheck   DateTime @default(now())
+}
+
+model AILog {
+  id          String   @id @default(uuid())
+  requestId   String?
+  complaintId String?
+  agent       String?
+  level       String   @default("INFO") // "INFO", "WARN", "ERROR", "DEBUG"
+  message     String
+  details     String?  // JSON context
+  createdAt   DateTime @default(now())
+}
+
+// ==========================================
+// Notification System Models
+// ==========================================
+
+model NotificationTemplate {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  type        String   // "EMAIL", "SMS", "PUSH"
+  subject     String?  // Applicable for EMAIL
+  body        String   // HTML or plain text
+  variables   String   @default("[]") // JSON array of required variables e.g. ["userName", "complaintId"]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NotificationPreference {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  
+  emailEnabled      Boolean  @default(true)
+  smsEnabled        Boolean  @default(true)
+  pushEnabled       Boolean  @default(true)
+  
+  complaintUpdates  Boolean  @default(true)
+  chatMessages      Boolean  @default(true)
+  marketingMessages Boolean  @default(false)
+  systemAlerts      Boolean  @default(true)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model EmailLog {
+  id          String   @id @default(uuid())
+  to          String
+  subject     String
+  body        String
+  status      String   // "PENDING", "SENT", "FAILED"
+  error       String?
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model SMSLog {
+  id          String   @id @default(uuid())
+  to          String
+  message     String
+  status      String   // "PENDING", "SENT", "FAILED"
+  error       String?
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model PushLog {
+  id          String   @id @default(uuid())
+  to          String   // Device/Subscription ID
+  payload     String
+  status      String   // "PENDING", "SENT", "FAILED"
+  error       String?
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+}
